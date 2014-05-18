@@ -1,0 +1,16 @@
+{
+
+	"name": "thermostat-monitor",
+	"version": "0.0.1",
+	"description": "Server for controling thermostat",
+	"author": {
+		"name": "Igor Shpakov",
+		"email": "igorshp@gmail.com"
+	},
+	"dependencies": {
+		"socket.io": "0.9.3",
+		"jParser":"1.0.2",
+		"request":"2.34.0"
+	}
+
+}

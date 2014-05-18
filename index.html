@@ -1,0 +1,135 @@
+<html>
+	<head>
+		<title>Thermostat</title>
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.12/angular.min.js"></script>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			var coordinator = angular.module('coordinator',[]);
+			coordinator.factory('socket', function($rootScope) {
+				var socket = io.connect();
+				return {
+					on: function (eventName, callback) {
+						socket.on(eventName, function() {
+							var args = arguments;
+							$rootScope.$apply(function() {
+								callback.apply(socket, args);
+							});
+						});
+					},
+					emit: function (eventName, data, callback) {
+						socket.emit(eventName, data, function () {
+							var args = arguments;
+							$rootScope.$apply(function () {
+								if (callback) {
+									callback.apply(socket, args);
+								}
+							});
+						})
+					}
+				};
+			});
+			coordinator.controller('main',function($scope,$http,$timeout,socket){
+				$scope.nodes = [];
+				$scope.logs = [];
+				socket.on('discovery',function(message){
+					console.log('discovered');
+				});
+				socket.on('node:add',function(node){
+					console.log('this is bad, mkay');
+					$scope.nodes.push(node)
+				});
+				socket.on('nodes',function(nodes){
+					//$scope.nodes = nodes;
+					console.log(nodes);
+					$scope.nodes = [];
+					angular.forEach(nodes, function(node,hex){
+						console.log(node);
+						$scope.nodes.push(node);
+					});
+				});
+				socket.on('logs',function(message){
+					console.log(message);
+					$scope.logs.push(message);
+					if($scope.logs.length > 10){
+						$scope.logs.pop();
+					}
+				});
+				$scope.turnon = function(node){
+					socket.emit("node_command",{command: 15, node: node});
+
+				}
+				$scope.turnoff = function(node){
+					socket.emit("node_command",{command: 0, node: node});
+
+				}
+				$scope.discover = function() {
+					socket.emit("command","discover");
+					console.log('discovering');
+				};
+
+			});
+			window.socket = io.connect('http://london606.dyndns.org:8800');
+			window.socket.on('data', function(data){
+				console.log(data);
+				$('#current_temp').html(data.currentTemp);
+				$('#target_temp').html(data.setTemp);
+				$('#status').html(data.setting);
+				$('#boiler').html(data.relay1);
+			});
+		</script>
+	</head>
+	<body ng-app="coordinator">
+		<div ng-controller="main">
+		<div>
+			<h1>Actions</h1>
+			<button ng-click="discover()">Discovery</button>
+		</div>
+		<div>
+			<h1>Discovered Nodes</h1>
+			<table>
+				<tr ng-repeat="node in nodes">
+					<td>{{node.remote64.hex}}</td>
+					<td>{{node.id}}</td>
+					<td><button ng-click="turnon(node)">On</button><button ng-click="turnoff(node)">Off</button></td>
+				</tr>
+
+			</table>
+		</div>
+		</div>
+
+		<div>
+			<h1>Logs</h1>
+			<table>
+				<tr ng-repeat="log in logs">
+					<td>{{log}}</td>
+				</tr>
+			</table>
+		</div>
+		<div>
+			<table>
+				<tr>
+					<td>Current temperature</td>
+					<td id='current_temp'></td>
+				</tr>
+				<tr>
+					<td>Target temperature</td>
+					<td id='target_temp'></td>
+				</tr>
+				<tr>
+					<td>Status</td>
+					<td id='status'></td>
+				</tr>
+				<tr>
+					<td>Boiler status</td>
+					<td id='boiler'></td>
+				</tr>
+			</table>
+		</div>
+
+
+
+		<button onclick="javascript:window.socket.emit('msg',prompt('temp?'));">Set Temp</button>
+	</body>
+</html>
+
